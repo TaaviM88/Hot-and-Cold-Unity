@@ -3,9 +3,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 using System;
-
+using UnityEngine.SceneManagement;
 public class DataPersistenceManager : MonoBehaviour
 {
+    [Header("Debugging")]
+    [SerializeField] private bool initializeDataIfNull = false;
+
     [Header("File Storage Config")]
     [SerializeField] private string fileName;
     [SerializeField] private bool useEncryption;
@@ -23,13 +26,31 @@ public class DataPersistenceManager : MonoBehaviour
 
         }
         instance = this;
+
+        this.dataHandler = new FileDataHandler(Application.persistentDataPath, fileName, useEncryption);
+        DontDestroyOnLoad(this.gameObject);
     }
 
-    private void Start()
+    private void OnEnable()
     {
-        this.dataHandler = new FileDataHandler(Application.persistentDataPath,fileName,useEncryption);
+        SceneManager.sceneLoaded += OnSceneLoaded;
+        SceneManager.sceneUnloaded += OnSceneUnLoaded;
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+        SceneManager.sceneUnloaded -= OnSceneUnLoaded;
+    }
+
+    public void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
         this.dataPersistenceObjects = FindAllDataPersistenceObjects();
         LoadGame();
+    }
+    public void OnSceneUnLoaded(Scene scene)
+    {
+        SaveGame();
     }
 
     private List<IDataPersistence> FindAllDataPersistenceObjects()
@@ -48,12 +69,18 @@ public class DataPersistenceManager : MonoBehaviour
         // Load any saved data from a file using the data handler
         this.gameData = dataHandler.Load();
 
+        //start a new game if the data is null and we're configured to initialize data for debugging puposes
+        if(this.gameData == null && initializeDataIfNull)
+        {
+            NewGame();
+        }
+
         //if no data can be loaded, initialize to a new game
 
         if(this.gameData == null)
         {
-            Debug.Log("No data was found. Initializing data to defaults.");
-            NewGame();
+            Debug.Log("No data was found. A New Game needs to be started before data can be loaded.");
+            return;
         }
         //TODO - push the loaded data to all other scripts that need it
         foreach (IDataPersistence dataPersistenceObj in dataPersistenceObjects)
@@ -65,7 +92,13 @@ public class DataPersistenceManager : MonoBehaviour
 
     public void SaveGame()
     {
-        //TODO - pass the data to other scripts so they can update it
+        //if we don't have any data to save, log a warning here
+        if(this.gameData == null)
+        {
+            Debug.Log("No data was found. A New Game needs to be started before data can be saved.");
+            return;
+        }
+        // pass the data to other scripts so they can update it
         foreach (IDataPersistence dataPersistenceObj in dataPersistenceObjects)
         {
             dataPersistenceObj.SaveData(ref gameData);
@@ -80,5 +113,10 @@ public class DataPersistenceManager : MonoBehaviour
     private void OnApplicationQuit()
     {
         SaveGame();
+    }
+
+    public bool HasGameData()
+    {
+        return gameData != null;
     }
 }

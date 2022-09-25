@@ -45,6 +45,7 @@ public class FileDataHandler
             catch(Exception e)
             {
                 Debug.LogError("Error occured when trying to load data from file: " + fullPath + "\n" + e);
+
             }
         }
 
