@@ -17,9 +17,15 @@ public class FileDataHandler
         this.useEncryption = useEncryption;
     }
 
-    public GameData Load()
+    public GameData Load(string profileId)
     {
-        string fullPath = Path.Combine(dataDirPath, dataFileName);
+        //base case - if the profileId is null, return right away
+        if(profileId == null)
+        {
+            return null;
+        }
+
+        string fullPath = Path.Combine(dataDirPath,profileId, dataFileName);
         GameData loadedData = null;
         if(File.Exists(fullPath))
         {
@@ -52,9 +58,15 @@ public class FileDataHandler
         return loadedData;
     }
 
-    public void Save(GameData data)
+    public void Save(GameData data, string profileId)
     {
-        string fullPath = Path.Combine(dataDirPath, dataFileName);
+        //Base case - if the profileId is null, return right away
+        if(profileId == null)
+        {
+            return;
+        }
+
+        string fullPath = Path.Combine(dataDirPath, profileId, dataFileName);
 
         try
         {
@@ -82,6 +94,71 @@ public class FileDataHandler
         {
             Debug.LogError("Error occured when trying to save data to file: " + fullPath + "\n" + e);
         }
+    }
+
+    public Dictionary<string, GameData> LoadAllProfiles()
+    {
+        Dictionary<string, GameData> profileDictionary = new Dictionary<string, GameData>();
+
+        //Loop over all directory names in the data directory path
+        IEnumerable<DirectoryInfo> dirInfos = new DirectoryInfo(dataDirPath).EnumerateDirectories();
+        foreach (DirectoryInfo dirInfo in dirInfos)
+        {
+            string profileId = dirInfo.Name;
+            //defensive programmin - check if the data file exists
+            //if it doesn't, then this folder isn't a profile and sould be skipped
+            string fullPath = Path.Combine(dataDirPath, profileId, dataFileName);
+            if(!File.Exists(fullPath))
+            {
+                continue;
+            }
+            //Load the game data for this profile and put it in the dictionary
+            GameData profileData = Load(profileId);
+            //defensive programming - ensure the profile data isn't null,
+            //because if it is then something went wrong and we should let ourselves know
+            if(profileData != null)
+            {
+                profileDictionary.Add(profileId, profileData);
+            }
+            else
+            {
+                Debug.Log("Tried to load profile but something went wrong. ProfileId: " + profileId);
+            }
+        }
+        return profileDictionary;
+    }
+
+    public string GetMostRecentlyUpdatedProfileId()
+    {
+        string mostRecentProfileId = null;
+        Dictionary<string, GameData> profilesGameData = LoadAllProfiles();
+        foreach (KeyValuePair<string, GameData> pair in profilesGameData)
+        {
+            string profileId = pair.Key;
+            GameData gameData = pair.Value;
+
+            if(gameData == null)
+            {
+                continue;
+            }
+            //if this is the first data we've come across that exists, it's the most recent so far
+            if(mostRecentProfileId == null)
+            {
+                mostRecentProfileId = profileId;
+            }
+            //otherwise, compare to see which date is the most recent
+            else
+            {
+                DateTime mostRecentDateTime = DateTime.FromBinary(profilesGameData[mostRecentProfileId].lastUpdated);
+                DateTime newDateTime = DateTime.FromBinary(gameData.lastUpdated);
+                //the greatest DateTime value is the most recent
+                if(newDateTime > mostRecentDateTime)
+                {
+                    mostRecentProfileId = profileId;
+                }
+            }
+        }
+        return mostRecentProfileId;
     }
 
     //the below is a simple implementation of XOR encryption
