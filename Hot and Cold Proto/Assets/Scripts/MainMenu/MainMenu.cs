@@ -15,12 +15,18 @@ public class MainMenu : Menu
     [SerializeField] private Button loadGameButton;
     private void Start()
     {
-        if(!DataPersistenceManager.instance.HasGameData())
+        DisableButtonsDependingOnData();
+    }
+
+    private void DisableButtonsDependingOnData()
+    {
+        if (!DataPersistenceManager.instance.HasGameData())
         {
             continueGameButton.interactable = false;
             loadGameButton.interactable = false;
         }
     }
+
     public void OnNewGameClicked()
     {
         saveSlotsMenu.ActivateMenu(false);
@@ -36,6 +42,7 @@ public class MainMenu : Menu
     public void ActivateMenu()
     {
         this.gameObject.SetActive(true);
+        DisableButtonsDependingOnData();
     }
 
     public void DeactiveMenu()
@@ -46,6 +53,7 @@ public class MainMenu : Menu
     public void OnContinueGameClicked()
     {
         DisableMenuButtons();
+        DataPersistenceManager.instance.SaveGame();
         //Load the next scene - which will in turn load the game because of
         //OnSceneLoaded() in the DataPersistenceManager
         SceneManager.LoadSceneAsync("SampleScene");

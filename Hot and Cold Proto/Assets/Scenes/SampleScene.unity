@@ -1820,6 +1820,7 @@ MonoBehaviour:
   - {fileID: 8300000, guid: a4c572c786ca6c147baf43c44b4a656e, type: 3}
   - {fileID: 8300000, guid: f797ef38330e5304388b672ef7b393ef, type: 3}
   - {fileID: 8300000, guid: af45cd6889f80614aac2001023d9df8f, type: 3}
+  playerAttributesSO: {fileID: 11400000, guid: 1c855f891dc45d14c95d417e9a082adb, type: 2}
 --- !u!114 &608506550
 MonoBehaviour:
   m_ObjectHideFlags: 0

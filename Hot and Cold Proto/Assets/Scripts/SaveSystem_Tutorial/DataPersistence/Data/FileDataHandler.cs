@@ -9,7 +9,7 @@ public class FileDataHandler
     private string dataFileName = "";
     private bool useEncryption = false;
     private readonly string encryptionCodeWord = "word";
-
+    private readonly string backupExtension = ".bak";
     public FileDataHandler(string dataDirPath, string dataFileName, bool useEncryption)
     {
         this.dataDirPath = dataDirPath;
@@ -17,7 +17,7 @@ public class FileDataHandler
         this.useEncryption = useEncryption;
     }
 
-    public GameData Load(string profileId)
+    public GameData Load(string profileId, bool allowRestoreFromBackup = true)
     {
         //base case - if the profileId is null, return right away
         if(profileId == null)
@@ -50,8 +50,25 @@ public class FileDataHandler
             }
             catch(Exception e)
             {
-                Debug.LogError("Error occured when trying to load data from file: " + fullPath + "\n" + e);
-
+                //since we're calling Load(...) recursively, we need to account for the case where
+                // the rollback succeeds, but data is still failing to load for some other reason,
+                //which without this check may cause an infinte recursion loop.
+                if(allowRestoreFromBackup)
+                {
+                    Debug.LogWarning("Failed to load data file. Attempting to roll back.\n" + e);
+                    bool rollbackSucess = AttemptRollback(fullPath);
+                    if (rollbackSucess)
+                    {
+                        //try to load again recursively
+                        loadedData = Load(profileId,false);
+                    }
+                }
+                else
+                {
+                    Debug.LogError("Error occured when trying to load file at path:" + fullPath +
+                        " and backup did not work.\n" + e);
+                }
+             
             }
         }
 
@@ -67,7 +84,7 @@ public class FileDataHandler
         }
 
         string fullPath = Path.Combine(dataDirPath, profileId, dataFileName);
-
+        string backupFilePath = fullPath + backupExtension;
         try
         {
             //create the directory the file will be written to if it doesn't already exist
@@ -89,10 +106,48 @@ public class FileDataHandler
                     write.Write(dataToStore);
                 }
             }
+            //verify the newly saved file can be loaded successfully
+            GameData verifiedGameData = Load(profileId);
+            if(verifiedGameData != null)
+            {
+                File.Copy(fullPath, backupFilePath, true);
+            }
+            //otherwise, something went wrong and we should throw an exception
+            else
+            {
+                throw new Exception("Save file could not be  verified and backup could not be created");
+            }
         }
         catch(Exception e)
         {
             Debug.LogError("Error occured when trying to save data to file: " + fullPath + "\n" + e);
+        }
+    }
+
+    public void Delete(string profileId)
+    {
+        //base case - if the profileId is null, return right away
+        if(profileId == null)
+        {
+            return;
+        }
+        string fullPath = Path.Combine(dataDirPath, profileId, dataFileName);
+        try
+        {
+            //ensure the data file exists at this path before deleting the directory
+            if (File.Exists(fullPath))
+            {
+                //delete the profile folderand everyhting within it
+                Directory.Delete(Path.GetDirectoryName(fullPath), true);
+            }
+            else
+            {
+                Debug.LogWarning("Tried to delete profile data, but data was not found at path: " + fullPath);
+            }
+        }
+        catch(Exception e)
+        {
+            Debug.LogError("Failed to delete profile data for profileId: " + profileId + " at path: " + fullPath + "\n" + e);
         }
     }
 
@@ -170,5 +225,32 @@ public class FileDataHandler
             modifiedData += (char)(data[i] ^ encryptionCodeWord[i % encryptionCodeWord.Length]);
         }
         return modifiedData;
+    }
+
+    private bool AttemptRollback(string fullPath)
+    {
+        bool success = false;
+
+        string backupFilePath = fullPath + backupExtension;
+        try
+        {
+            //if the file exists , attemp to roll back to it by overwriting the original file
+            if(File.Exists(backupFilePath))
+            {
+                File.Copy(backupFilePath, fullPath, true);
+                success = true;
+                Debug.LogWarning("Had to roll back to backup file at: " + backupFilePath);
+            }
+            else
+            {
+                throw new Exception("Tried to roll back, but no backup file exists to roll back to.");
+            }
+        }
+        catch (Exception e)
+        {
+
+            Debug.LogError("Error occured when trying to roll back to backup file at: " + backupFilePath + "\n" + e);
+        }
+        return success;
     }
 }

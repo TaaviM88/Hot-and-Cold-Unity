@@ -41,7 +41,7 @@ public class GameManager : MonoBehaviour, IDataPersistence
         this.score = data.scoreCount;
     }
 
-    public void SaveData(ref GameData data)
+    public void SaveData(GameData data)
     {
         data.scoreCount = this.score ;
     }

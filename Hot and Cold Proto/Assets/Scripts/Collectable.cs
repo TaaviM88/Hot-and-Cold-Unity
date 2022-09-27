@@ -16,6 +16,12 @@ public class Collectable : MonoBehaviour, IDataPersistence
     // Start is called before the first frame update
     void Start()
     {
+        GetVisualComponent();
+    }
+
+
+    void GetVisualComponent()
+    {
         visual = GetComponent<SpriteRenderer>();
     }
 
@@ -30,6 +36,7 @@ public class Collectable : MonoBehaviour, IDataPersistence
 
     public void LoadData(GameData data)
     {
+        GetVisualComponent();
         data.coinsCollected.TryGetValue(id, out collected);
         if(collected)
         {
@@ -38,7 +45,7 @@ public class Collectable : MonoBehaviour, IDataPersistence
 
     }
 
-    public void SaveData(ref GameData data)
+    public void SaveData(GameData data)
     {
         if(data.coinsCollected.ContainsKey(id))
         {

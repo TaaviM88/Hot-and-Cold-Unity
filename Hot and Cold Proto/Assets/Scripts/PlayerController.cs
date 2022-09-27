@@ -26,6 +26,9 @@ public class PlayerController : MonoBehaviour, IDataPersistence
     bool increasing = true;
     bool canMove = true;
     bool digging = false;
+    [Header("Attributes SO")]
+    [SerializeField] private AttributesScriptableObjects playerAttributesSO;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -202,10 +205,14 @@ public class PlayerController : MonoBehaviour, IDataPersistence
     public void LoadData(GameData data)
     {
         this.transform.position = data.playerPosition;
+        playerAttributesSO.strength = data.playerAttributesData.strength;
+        playerAttributesSO.speed = data.playerAttributesData.speed;
     }
 
-    public void SaveData(ref GameData data)
+    public void SaveData(GameData data)
     {
         data.playerPosition = this.transform.position;
+        data.playerAttributesData.strength = playerAttributesSO.strength;
+        data.playerAttributesData.speed = playerAttributesSO.speed;
     }
 }
